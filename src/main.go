@@ -5,12 +5,15 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
 
+	"github.com/otiai10/copy"
 	"github.com/sirupsen/logrus"
 )
 
@@ -70,8 +73,6 @@ func zipit(source, target string) error {
 	archive := zip.NewWriter(zipfile)
 	defer archive.Close()
 
-	base := filepath.Base(source)
-
 	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -88,8 +89,9 @@ func zipit(source, target string) error {
 		if err != nil {
 			return err
 		}
-		header.Name = path[len(base)+1:]
+		header.Name = strings.TrimPrefix(path, source)
 		header.Method = zip.Deflate
+		logrus.Debug(header.Name)
 
 		writer, err := archive.CreateHeader(header)
 		if err != nil {
@@ -124,13 +126,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	projPath := expandHome(os.Args[1])
-	target := fmt.Sprintf("%s.%s", projPath, "zip")
-	logrus.Infof("Python Project: %s\n", projPath)
+	tmpDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	projDir := expandHome(os.Args[1])
+	target := fmt.Sprintf("%s.%s", projDir, "zip")
+	logrus.Infof("Python Project: %s\n", projDir)
+	logrus.Infof("Tmp Dir: %s\n", tmpDir)
 	logrus.Infof("Output: %s\n", target)
 
 	if fileExists(target) {
 		logrus.Fatal("file already exists at ", target)
+	}
+
+	if err := copy.Copy(projDir, tmpDir); err != nil {
+		log.Fatal(err)
 	}
 
 	var pip string
@@ -144,11 +157,11 @@ func main() {
 
 	// install dependencies
 	logrus.Info("checking requirements.txt in python project")
-	requirementsPath := filepath.Join(projPath, "requirements.txt")
+	requirementsPath := filepath.Join(tmpDir, "requirements.txt")
 	if fileExists(requirementsPath) {
 		logrus.Info("requirements.txt exists")
 	} else {
-		logrus.Infof("%s not found. create a new one.\n", requirementsPath)
+		logrus.Info("requirements.txt not found. create a new one")
 
 		pipreqs := "pipreqs"
 		if !commandExists(pipreqs) {
@@ -156,7 +169,7 @@ func main() {
 			logrus.Fatalf("please run '%s install pipreqs' to install dependency", pip)
 		}
 
-		cmd := exec.Command(pipreqs, projPath, "--savepath", requirementsPath)
+		cmd := exec.Command(pipreqs, tmpDir, "--savepath", requirementsPath)
 		out, err := run(cmd)
 		if err != nil {
 			logrus.Fatal(err)
@@ -165,15 +178,15 @@ func main() {
 	}
 
 	logrus.Info("install python libraries")
-	cmd := exec.Command(pip, "install", "-r", requirementsPath, "-t", projPath)
+	cmd := exec.Command(pip, "install", "-r", requirementsPath, "-t", tmpDir)
 	out, err := run(cmd)
 	if err != nil {
 		logrus.Fatal(err)
 	}
 	logrus.Info(out)
 
-	logrus.Infof("zip %s to %s", projPath, target)
-	err = zipit(projPath, target)
+	logrus.Infof("zip python project with dependencies to %s", target)
+	err = zipit(tmpDir, target)
 	if err != nil {
 		logrus.Fatal("Failed to zip python project. ", err)
 	}
