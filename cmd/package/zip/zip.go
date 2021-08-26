@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/BlueWhaleKo/python-lambda-zipper/pkg/archive"
@@ -76,13 +75,17 @@ func main(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	var pip string
+	pip := ""
 	if util.ExecutableExists("pip3") {
 		pip = "pip3"
 	} else if util.ExecutableExists("pip") {
 		pip = "pip"
 	} else {
 		logrus.Fatal("'pip3' or 'pip' must be installed")
+	}
+
+	if err != nil {
+		logrus.Fatal(err)
 	}
 
 	// install dependencies
@@ -99,8 +102,7 @@ func main(cmd *cobra.Command, args []string) {
 			logrus.Fatalf("please run '%s install pipreqs' to install dependency", pip)
 		}
 
-		command := exec.Command(pipreqs, tmpDir, "--savepath", requirementsPath)
-		out, err := util.RunCommand(command)
+		out, err := util.RunCommand(pipreqs, tmpDir, "--savepath", requirementsPath)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -108,8 +110,7 @@ func main(cmd *cobra.Command, args []string) {
 	}
 
 	logrus.Info("install python libraries")
-	command := exec.Command(pip, "install", "-r", requirementsPath, "-t", tmpDir)
-	out, err := util.RunCommand(command)
+	out, err := util.RunCommand(pip, "install", "-r", requirementsPath, "-t", tmpDir)
 	if err != nil {
 		logrus.Fatal(err)
 	}

@@ -1,7 +1,9 @@
 package util
 
 import (
+	"bufio"
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/user"
@@ -49,16 +51,46 @@ func ExecutableExists(cmd string) bool {
 }
 
 // RunCommand runs given command on host machine
-func RunCommand(cmd *exec.Cmd) (string, error) {
+func RunCommand(name string, args ...string) (string, error) {
+	command := exec.Command(name, args...)
+
+	logrus.Info("execute command: " + command.String())
+
 	// set var to get the output
-	var out bytes.Buffer
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
 
 	// set the output to our variable
-	cmd.Stdout = &out
-	err := cmd.Run()
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	err := command.Run()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%s. %s", stderr, err)
 	}
 
-	return out.String(), nil
+	return stdout.String(), nil
+}
+
+func Write(path string, contents ...string) error {
+
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+	if err != nil {
+		return fmt.Errorf("failed to open file %s. %s", path, err)
+	}
+
+	datawriter := bufio.NewWriter(file)
+
+	for _, c := range contents {
+		_, err = datawriter.WriteString(c + "\n")
+
+		if err != nil {
+			return fmt.Errorf("failed to write to file %s. %s", path, err)
+		}
+	}
+
+	datawriter.Flush()
+	file.Close()
+
+	return nil
 }

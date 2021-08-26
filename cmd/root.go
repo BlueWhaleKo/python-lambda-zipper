@@ -17,6 +17,7 @@ package cmd
 
 import (
 	pkg "github.com/BlueWhaleKo/python-lambda-zipper/cmd/package"
+	pkgDocker "github.com/BlueWhaleKo/python-lambda-zipper/cmd/package/docker"
 	pkgZip "github.com/BlueWhaleKo/python-lambda-zipper/cmd/package/zip"
 	"github.com/spf13/cobra"
 )
@@ -56,6 +57,7 @@ func init() {
 
 	pkgCmd := pkg.NewPackageCommand()
 	pkgCmd.AddCommand(pkgZip.NewZipCommand())
+	pkgCmd.AddCommand(pkgDocker.NewDockerCommand())
 	rootCmd.AddCommand(pkgCmd)
 }
 
