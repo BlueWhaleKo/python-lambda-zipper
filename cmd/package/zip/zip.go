@@ -22,8 +22,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/BlueWhaleKo/python-lambda-zipper/pkg/archive"
-	"github.com/BlueWhaleKo/python-lambda-zipper/pkg/util"
+	"github.com/BlueWhaleKo/python-packer/pkg/archive"
+	"github.com/BlueWhaleKo/python-packer/pkg/util"
 	"github.com/otiai10/copy"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

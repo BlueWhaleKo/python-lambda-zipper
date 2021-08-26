@@ -1,4 +1,4 @@
-module github.com/BlueWhaleKo/python-lambda-zipper
+module github.com/BlueWhaleKo/python-packer
 
 go 1.16
 

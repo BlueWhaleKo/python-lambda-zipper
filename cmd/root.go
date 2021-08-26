@@ -16,9 +16,9 @@ limitations under the License.
 package cmd
 
 import (
-	pkg "github.com/BlueWhaleKo/python-lambda-zipper/cmd/package"
-	pkgDocker "github.com/BlueWhaleKo/python-lambda-zipper/cmd/package/docker"
-	pkgZip "github.com/BlueWhaleKo/python-lambda-zipper/cmd/package/zip"
+	pkg "github.com/BlueWhaleKo/python-packer/cmd/package"
+	pkgDocker "github.com/BlueWhaleKo/python-packer/cmd/package/docker"
+	pkgZip "github.com/BlueWhaleKo/python-packer/cmd/package/zip"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +28,7 @@ var cfgFile string
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 
 var rootCmd = &cobra.Command{
-	Use:   "python-lambda-zipper",
+	Use:   "python-packer",
 	Short: "A brief description of your application",
 	Long: `A longer description that spans multiple lines and likely contains
 examples and usage of using your application. For example:
@@ -71,10 +71,10 @@ func initConfig() {
 	//	home, err := os.UserHomeDir()
 	//	cobra.CheckErr(err)
 
-	//	// Search config in home directory with name ".python-lambda-zipper" (without extension).
+	//	// Search config in home directory with name ".python-packer" (without extension).
 	//	viper.AddConfigPath(home)
 	//	viper.SetConfigType("yaml")
-	//	viper.SetConfigName(".python-lambda-zipper")
+	//	viper.SetConfigName(".python-packer")
 	//}
 
 	//viper.AutomaticEnv() // read in environment variables that match

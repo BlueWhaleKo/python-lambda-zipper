@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import "github.com/BlueWhaleKo/python-lambda-zipper/cmd"
+import "github.com/BlueWhaleKo/python-packer/cmd"
 
 func main() {
 	cmd.Execute()
