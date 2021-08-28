@@ -17,22 +17,16 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/BlueWhaleKo/python-packer/pkg/util"
+	docker "github.com/BlueWhaleKo/python-packer/pkg/util/docker"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
-
-type dockerArgs struct {
-	ProjectPath string
-	OutputImage string
-	BaseImage   string
-}
-
-var dockerargs = &dockerArgs{}
 
 var dockerCmd = &cobra.Command{
 	Use:   "docker --[flags] [options]",
@@ -47,11 +41,21 @@ func NewDockerCommand() *cobra.Command {
 	return dockerCmd
 }
 
+type dockerArgs struct {
+	ProjectPath    string
+	OutputImage    string
+	BaseImage      string
+	DockerfilePath string
+}
+
+var dockerargs = &dockerArgs{}
+
 func init() {
 	// parse args
 	dockerCmd.Flags().StringVar(&dockerargs.ProjectPath, "project-path", "", "(required) path to python project")
 	dockerCmd.Flags().StringVar(&dockerargs.OutputImage, "output-image", "", "(required) name of output image")
 	dockerCmd.Flags().StringVar(&dockerargs.BaseImage, "base-image", "", "(required) name of base image to build from")
+	dockerCmd.Flags().StringVar(&dockerargs.DockerfilePath, "dockerfile", "", "path to Dockerfile")
 
 	dockerCmd.MarkFlagRequired("project-path")
 	dockerCmd.MarkFlagRequired("output-image")
@@ -59,49 +63,38 @@ func init() {
 }
 
 func validate() error {
-	if !util.ExecutableExists("docker") {
-		return fmt.Errorf("You need docker installed to run this command")
+	if dockerargs.DockerfilePath == "" {
+		dockerargs.DockerfilePath = filepath.Join(dockerargs.ProjectPath, "Dockerfile")
+		logrus.Warnf("--dockerfile is not specified. Use %s by default", dockerargs.DockerfilePath)
 	}
+
+	logrus.Info("Project: ", dockerargs.ProjectPath)
+	logrus.Info("Dockerfile: ", dockerargs.DockerfilePath)
+	logrus.Info("Base Image: ", dockerargs.BaseImage)
+	logrus.Info("Output Image: ", dockerargs.OutputImage)
 
 	if !util.FileExists(filepath.Join(dockerargs.ProjectPath, "__main__.py")) {
 		return fmt.Errorf("You need __main__.py at python project root %s as entrypoint", dockerargs.ProjectPath)
 	}
+	filepath.Join(dockerargs.ProjectPath, "Dockerfile")
 
 	return nil
 }
 
-func createDockerfile() *util.Dockerfile {
-	// create Dockerfile
+func createDockerfile() *docker.Dockerfile {
 	targetDir := "/app"
 
-	d := util.NewDockerfile(dockerargs.BaseImage)
-	d.Run("pip install pipreqs")
-	d.Add("./", targetDir)
-	d.WORKDIR(targetDir)
-	d.Run("pipreqs .")
-	d.Run("pip install -r ./requirements.txt -t .")
-
-	d.Entrypoint("python __main__.py")
+	d := docker.NewDockerfile().
+		From(dockerargs.BaseImage).
+		Run("pip", "install", "pipreqs").
+		WORKDIR(targetDir).
+		Add(".", ".").
+		Run("pipreqs", ".").
+		Run("pip", "install", "-r", "./requirements.txt", "-t", ".").
+		WORKDIR("/").
+		Entrypoint("python", targetDir)
 
 	return d
-}
-
-func writeDockerfile(d *util.Dockerfile) (string, error) {
-	lines := d.Build()
-	logrus.Info("Dockerfile: \n" + lines)
-
-	tmpFile, err := ioutil.TempFile("", "")
-	if err != nil {
-		return "", err
-	}
-
-	err = util.Write(tmpFile.Name(), lines)
-	if err != nil {
-		return "", err
-	}
-
-	return tmpFile.Name(), nil
-
 }
 
 func main(cmd *cobra.Command, args []string) {
@@ -110,17 +103,32 @@ func main(cmd *cobra.Command, args []string) {
 		logrus.Fatal(err)
 	}
 
-	dfile := createDockerfile()
-	dfpath, err := writeDockerfile(dfile)
+	if !util.FileExists(dockerargs.DockerfilePath) {
+		logrus.Warn("Dockerfile not found at project root. Create a default")
+
+		contents := createDockerfile().Build()
+		logrus.Info("Dockerfile:\n", contents)
+		err := util.Write(dockerargs.DockerfilePath, contents)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		defer os.Remove(dockerargs.DockerfilePath)
+	}
+
+	// create client
+	logrus.Info("Create docker client")
+	c, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	defer os.Remove(dfpath)
 
-	out, err := util.RunCommand("docker", "build", "-t", dockerargs.OutputImage, "-f", dfpath, dockerargs.ProjectPath)
-
+	logrus.Info("Build docker image")
+	res, err := docker.BuildImageFromPath(c, dockerargs.ProjectPath, types.ImageBuildOptions{})
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	logrus.Info(out)
+
+	docker.Print(res.Body)
+	logrus.Info("Successfuly built docker image")
 }
