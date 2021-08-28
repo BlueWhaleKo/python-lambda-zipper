@@ -82,17 +82,23 @@ func validate() error {
 }
 
 func createDockerfile() *docker.Dockerfile {
+	stage := "builder"
 	targetDir := "/app"
 
-	d := docker.NewDockerfile().
-		From(dockerargs.BaseImage).
-		Run("pip", "install", "pipreqs").
-		WORKDIR(targetDir).
-		Add(".", ".").
-		Run("pipreqs", ".").
-		Run("pip", "install", "-r", "./requirements.txt", "-t", ".").
-		WORKDIR("/").
-		Entrypoint("python", targetDir)
+	// build stage
+	d := docker.NewDockerfile()
+	d.FromAs("python", stage)
+	d.Run("pip", "install", "pipreqs")
+	d.Workdir(targetDir)
+	d.Add(".", ".")
+	d.Run("pipreqs", ".")
+	d.Run("pip", "install", "-r", "./requirements.txt", "-t", ".")
+
+	// runtime stage
+	d.From(dockerargs.BaseImage)
+	d.CopyFrom(targetDir, targetDir, stage)
+	d.Workdir("/")
+	d.Entrypoint("python", targetDir)
 
 	return d
 }

@@ -19,6 +19,11 @@ func (d *Dockerfile) From(from string) *Dockerfile {
 	return d
 }
 
+func (d *Dockerfile) FromAs(image, stage string) *Dockerfile {
+	d.inner = append(d.inner, fmt.Sprintf("FROM %s AS %s", image, stage))
+	return d
+}
+
 func (d *Dockerfile) Entrypoint(entrypoint ...string) *Dockerfile {
 	s := strings.Join(entrypoint, " ")
 	d.inner = append(d.inner, fmt.Sprintf("ENTRYPOINT %s", s))
@@ -31,7 +36,7 @@ func (d *Dockerfile) Cmd(cmd ...string) *Dockerfile {
 	return d
 }
 
-func (d *Dockerfile) WORKDIR(dir string) *Dockerfile {
+func (d *Dockerfile) Workdir(dir string) *Dockerfile {
 	d.inner = append(d.inner, fmt.Sprintf("WORKDIR %s", dir))
 	return d
 }
@@ -48,6 +53,11 @@ func (d *Dockerfile) Add(source, target string) *Dockerfile {
 
 func (d *Dockerfile) Copy(source, target string) *Dockerfile {
 	d.inner = append(d.inner, fmt.Sprintf("COPY %s %s", source, target))
+	return d
+}
+
+func (d *Dockerfile) CopyFrom(source, target, from string) *Dockerfile {
+	d.inner = append(d.inner, fmt.Sprintf("COPY --from=%s %s %s", from, source, target))
 	return d
 }
 
