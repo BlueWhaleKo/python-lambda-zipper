@@ -52,10 +52,10 @@ var dockerargs = &dockerArgs{}
 
 func init() {
 	// parse args
-	dockerCmd.Flags().StringVar(&dockerargs.ProjectPath, "project-path", "", "(required) path to python project")
-	dockerCmd.Flags().StringVar(&dockerargs.OutputImage, "output-image", "", "(required) name of output image")
-	dockerCmd.Flags().StringVar(&dockerargs.BaseImage, "base-image", "", "(required) name of base image to build from")
+	dockerCmd.Flags().StringVar(&dockerargs.ProjectPath, "project-path", "", "(required) path to python project directory")
 	dockerCmd.Flags().StringVar(&dockerargs.DockerfilePath, "dockerfile", "", "path to Dockerfile")
+	dockerCmd.Flags().StringVar(&dockerargs.BaseImage, "base-image", "", "(required) name of base image to build from")
+	dockerCmd.Flags().StringVar(&dockerargs.OutputImage, "output-image", "", "(required) name of output image")
 
 	dockerCmd.MarkFlagRequired("project-path")
 	dockerCmd.MarkFlagRequired("output-image")
@@ -104,7 +104,7 @@ func main(cmd *cobra.Command, args []string) {
 	}
 
 	if !util.FileExists(dockerargs.DockerfilePath) {
-		logrus.Warn("Dockerfile not found at project root. Create a default")
+		logrus.Warnf("Dockerfile not found at %s. Create a default", dockerargs.DockerfilePath)
 
 		contents := createDockerfile().Build()
 		logrus.Info("Dockerfile:\n", contents)
@@ -130,5 +130,5 @@ func main(cmd *cobra.Command, args []string) {
 	}
 
 	docker.Print(res.Body)
-	logrus.Info("Successfuly built docker image")
+	logrus.Infof("Successfuly built docker image '%s'", dockerargs.OutputImage)
 }
